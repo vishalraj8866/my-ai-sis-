@@ -1,0 +1,27 @@
+SIYA/
+├── bot.py                      ← Telegram Bot Controller (no SSL needed)
+├── server.py                   ← Localhost HTTP server (Siya's heart)
+├── brain/
+│   ├── logic.py                ← Understands and replies like a sister
+│   ├── memory.json             ← Chat history
+│   ├── mood.json               ← Mood state (happy/sad)
+│   └── knowledge.json          ← Facts + learned data
+├── config.py                   ← Tokens & Secrets
+├── start_siya.bat              ← Run both bot & server
+└── README.txt                  ← How to run everything
+
+
+
+
+SIYA/
+├── server.py                 ← Flask server (serve chat + brain)
+├── templates/
+│   └── chat.html             ← Your HTML UI
+├── static/
+│   ├── live2d-models/
+│   │   └── shizuku/...
+│   └── assets/banner.cn.jpg ← Background image
+├── brain/
+│   ├── logic.py
+│   ├── memory.json
+│   └── mood.json

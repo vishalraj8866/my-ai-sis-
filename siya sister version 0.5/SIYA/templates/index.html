@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Siya – Your AI Sister</title>
+  <style>
+    body {
+      background: url("/static/assets/moon-over-mountain.jpeg") no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    #chat-log {
+      width: 90%;
+      max-width: 500px;
+      margin: 20px auto;
+      height: 250px;
+      overflow-y: auto;
+      background-color: rgba(0,0,0,0.6);
+      padding: 15px;
+      border-radius: 10px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 5px;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+    }
+    canvas {
+      display: block;
+      margin: 30px auto 10px;
+    }
+  </style>
+
+  <!-- ✅ Load Live2D & PixiJS -->
+  <script src="https://unpkg.com/pixi.js@5"></script>
+  <script src="https://unpkg.com/live2d-widget@3.1.4/lib/L2Dwidget.min.js"></script>
+</head>
+<body>
+  <h2>👧 Siya is here for you</h2>
+
+  <div>
+    <input id="user-input" placeholder="Type something...">
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="toggleMic()">🎤</button>
+    <button onclick="switchVoice()">🔄 Voice: <span id="voice-label">Female</span></button>
+  </div>
+
+  <div id="chat-log"></div>
+  <canvas id="live2d" width="400" height="800"></canvas>
+
+  <script>
+    let speechEnabled = true;
+    let listening = false;
+    let recognition;
+    let voiceGender = 1;
+    let voices = [];
+
+    L2Dwidget.init({
+      model: {
+        jsonPath: "/static/live2d-models/shizuku/shizuku.model.json"
+      },
+      display: {
+        width: 400,
+        height: 800,
+        position: "center",
+        hOffset: 0,
+        vOffset: -20
+      },
+      mobile: { show: true },
+      react: { opacityDefault: 1, opacityOnHover: 1 }
+    });
+
+    function applyExpression(expressionFile) {
+      fetch(expressionFile)
+        .then(res => res.json())
+        .then(data => {
+          if (window.L2Dwidget && window.L2Dwidget.setExpressionObject) {
+            window.L2Dwidget.setExpressionObject(data);
+          }
+        });
+    }
+
+    function speakText(text) {
+      if (!speechEnabled || !window.speechSynthesis) return;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      utterance.pitch = 1;
+      utterance.rate = 1;
+
+      const preferred = voices.find(v => voiceGender === 1 ? v.name.toLowerCase().includes("female") : v.name.toLowerCase().includes("male"));
+      if (preferred) utterance.voice = preferred;
+
+      let interval;
+
+      utterance.onstart = () => {
+        interval = setInterval(() => {
+          const exp = Math.random() > 0.5 ? "f03" : "f04";
+          applyExpression(`/static/live2d-models/shizuku/expressions/${exp}.exp.json`);
+        }, 200);
+      };
+
+      utterance.onend = () => {
+        clearInterval(interval);
+        applyExpression("/static/live2d-models/shizuku/expressions/f01.exp.json");
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById("user-input");
+      const chatLog = document.getElementById("chat-log");
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      chatLog.innerHTML += `<div><b>You:</b> ${msg}</div>`;
+      fetch(`/siya?msg=${encodeURIComponent(msg)}`)
+        .then(res => res.text())
+        .then(reply => {
+          chatLog.innerHTML += `<div><b>Siya:</b> ${reply}</div>`;
+          chatLog.scrollTop = chatLog.scrollHeight;
+          input.value = '';
+          speakText(reply.replace("👧 Siya: ", ""));
+        });
+    }
+
+    function toggleMic() {
+      if (listening) {
+        recognition.stop();
+        listening = false;
+        alert("🎤 Mic turned off");
+        return;
+      }
+
+      if (!("webkitSpeechRecognition" in window)) {
+        alert("Mic not supported");
+        return;
+      }
+
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onresult = function (event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("user-input").value = transcript;
+        sendMessage();
+      };
+
+      recognition.onerror = function (event) {
+        alert("Mic error: " + event.error);
+      };
+
+      recognition.start();
+      listening = true;
+      alert("🎤 Listening...");
+    }
+
+    function switchVoice() {
+      voiceGender = voiceGender === 1 ? 0 : 1;
+      document.getElementById("voice-label").innerText = voiceGender === 1 ? "Female" : "Male";
+    }
+
+    document.getElementById("user-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      voices = window.speechSynthesis.getVoices();
+    };
+  </script>
+</body>
+</html>
